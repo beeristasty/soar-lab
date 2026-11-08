@@ -1,0 +1,17 @@
+<group name="local,soc,attack,">
+  <rule id="100100" level="10" frequency="5" timeframe="60">
+    <if_matched_sid>5710</if_matched_sid>
+    <if_matched_sid>5760</if_matched_sid>
+    <same_source_ip />
+    <description>SSH brute force: 5+ auth failures from same source in 60s</description>
+    <mitre><id>T1110</id></mitre>
+    <group>authentication_failures,</group>
+  </rule>
+  <rule id="100102" level="10" frequency="5" timeframe="60">
+    <if_matched_sid>2502</if_matched_sid>
+    <same_source_ip />
+    <description>SSH brute force (journald/PAM path): repeated missed passwords from same source</description>
+    <mitre><id>T1110</id></mitre>
+    <group>authentication_failures,</group>
+  </rule>
+</group>

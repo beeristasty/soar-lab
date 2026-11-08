@@ -1,0 +1,4 @@
+services:
+  wazuh.manager:
+    volumes:
+      - ./wazuh/rules/local_rules.xml:/var/ossec/etc/rules/local_rules.xml:ro

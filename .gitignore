@@ -1,0 +1,8 @@
+.env
+wazuh-docker/
+__pycache__/
+.pytest_cache/
+*.pyc
+*.swp
+*.swo
+.env.swp

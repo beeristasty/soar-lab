@@ -1,0 +1,41 @@
+id: pb-001-ssh-bruteforce
+version: 1.2.0
+title: SSH brute force triage and containment
+description: >
+  Enriches a source IP responsible for repeated SSH auth failures, blocks it at
+  the host firewall when confidence is high, and opens a case for the SOC.
+owner: soc-automation@example.com
+stakeholders: [SOC, Threat Intel]
+mitre: [T1110]
+trigger:
+  source: wazuh
+  rule_ids: [100100, 100102]
+  threshold: 5
+  window_seconds: 60
+inputs: [src_ip]
+steps:
+  - id: dedupe
+    uses: state.dedupe
+    with: {key: "{{ inputs.src_ip }}", ttl: 3600}
+  - id: enrich
+    uses: ti.abuseipdb
+    with: {ip: "{{ inputs.src_ip }}"}
+  - id: notify_triage
+    uses: notify.slack
+    with:
+      text: ":rotating_light: *PB-001* brute force from `{{ inputs.src_ip }}` — abuse score {{ steps.enrich.score }} (case #{{ case.id }})"
+  - id: contain
+    uses: contain.ufw
+    on_error: continue
+    with: {ip: "{{ inputs.src_ip }}", ttl_hours: 24, safe_ips: "{{ safe_ips }}"}
+  - id: ticket
+    uses: ticket.github
+    on_error: continue
+    with:
+      title: "[PB-001] Auto-contained brute force from {{ inputs.src_ip }}"
+      body: |
+        Case #{{ case.id }}
+        Source IP: {{ inputs.src_ip }}
+        AbuseIPDB score: {{ steps.enrich.score }} ({{ steps.enrich.reports }} reports)
+        Containment: {{ steps.contain }}
+      labels: [security, auto-triage]

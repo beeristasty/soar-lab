@@ -1,0 +1,66 @@
+include:
+  - path: wazuh-docker/single-node/docker-compose.yml
+
+name: soar-lab
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: soar
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-soar}
+      POSTGRES_DB: soar
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U soar"]
+      interval: 5s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    volumes: [redisdata:/data]
+
+  soar-api:
+    build: ./soar
+    env_file: .env
+    pid: host
+    privileged: true
+    environment:
+      PLAYBOOK_DIR: /playbooks
+    volumes:
+      - ./soar/playbooks:/playbooks:ro
+      - ./safe-ips.txt:/etc/soar/safe-ips.txt:ro
+    ports: ["8080:8080"]
+    depends_on:
+      postgres: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/healthz"]
+      interval: 10s
+      retries: 10
+
+  soar-worker:
+    build: ./soar
+    command: ["python", "-m", "app.worker"]
+    env_file: .env
+    pid: host
+    privileged: true
+    environment:
+      PLAYBOOK_DIR: /playbooks
+    volumes:
+      - ./soar/playbooks:/playbooks:ro
+      - ./safe-ips.txt:/etc/soar/safe-ips.txt:ro
+    depends_on:
+      postgres: {condition: service_healthy}
+
+  soar-poller:
+    build: ./soar
+    command: ["python", "-m", "app.poller"]
+    env_file: .env
+    volumes: [pollercursor:/var/lib/poller]
+    depends_on:
+      soar-api: {condition: service_healthy}
+
+volumes:
+  pgdata:
+  redisdata:
+  pollercursor:
